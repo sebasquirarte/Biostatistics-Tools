@@ -18,4 +18,4 @@ The values needed to calculate sample size for a clinical trial are type l error
 
 This code provides a tempate written in R that can be used to calculate sample sizes based on a set range of values, which allows us to analyze how sample sizes changes in regards to the mean or proportion of our 'new treatment' group. The template is included as an R script and an RMarkdown file has also been added to this repository as a guide for each of the different possible calculations. 
 
-~Source and inspiration from: HyLown Consulting LLC (2022), https://powerandsamplesize.com/~
+Source and inspiration from: HyLown Consulting LLC (2022), https://powerandsamplesize.com/
