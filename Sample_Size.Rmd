@@ -1,0 +1,490 @@
+---
+title: "Sample Size Calculation"
+author: "Sebastian Quirarte"
+date: 'September 2023'
+output:
+  rmarkdown::html_document:
+    toc: true # table of content true
+    toc_depth: 3  # upto three depths of headings (specified by #, ## and ###)
+    number_sections: true  ## if you want number sections at each table header
+    theme: cosmo  # many options for theme, this one is my favorite.
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\
+_**Programming Language**_: R | _**Packages**_: ggplot2, ggthemes
+
+The goal of this document is to provide a template in R that can calculate the sample size needed for clinical trials and other experiments based on specified values and a set type l error (alpha), type two error (beta), and statistical power (1 minus beta). A range of means or proportions of interest can be established and all sample sizes calculated, stored in a data frame, and plotted.  
+
+**Group A is considered the 'new treatment group' and the sample size calculated is for EACH of the two treatment arms/groups.** 
+
+*Source and inspiration:* HyLown Consulting LLC (2022), https://powerandsamplesize.com/
+
+-----------------------------------------------------------------------------------------------
+
+First, let's remove previous variables as part of good practices in R, and load the necessary packages for the ggplot() and themes() functions.
+```{r results = 'hide', warning=FALSE, message=FALSE}
+rm(list = ls())
+pkgs <- (c("ggplot2", "ggthemes")) # ggplot, theme_minimal() 
+lapply(pkgs, require, character.only = TRUE)
+```
+
+-----------------------------------------------------------------------------------------------
+
+# Compare Two Means 
+
+-----------------------------------------------------------------------------------------------
+
+## Equality 
+
+Equality tests aim to prove whether the means of two groups are different. Suppose the two groups are 'A' and 'B', and we collect a sample from both groups -- i.e. we have two samples. We perform a two-sample test to determine whether the mean in group A ($μ_{A}$), is different from the mean in group B ($μ_{B}$).
+
+The hypotheses are: 
+
+\[
+  H_{0}: \mu_{A} - \mu_{B} = 0 
+\]
+\[
+  H_{1}: \mu_{A} - \mu_{B} ≠ 0
+\]
+
+Let's load up our necessary variables 
+```{r}
+muA = 5 # group A mean (new treatment)
+muB = 10 # group B mean
+sd = 10 # standard deviation
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error 
+```
+
+We can set a range of group A means that we want to plot with their respective sample sizes. 
+```{r}
+range_meanA = seq(1, 8, 0.1) # (start, stop, step)
+```
+
+Let's create a data frame with this range of means and an empty column for sample sizes (n).
+```{r}
+df <- data.frame("meanA"=range_meanA, "n"=0)
+```
+
+This for loop calculates the sample sizes for each of the means in our selected range and adds them to our data frame. 
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each mean of group A and adds value to data frame
+for (i in range_meanA){
+  muA = i 
+  nB = ceiling((1+1/kappa)*(sd*(qnorm(1-alpha/2)+qnorm(1-beta))/(muA-muB))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+Here's a look at our data frame:
+```{r}
+head(df)
+tail(df)
+```
+
+Finally, we can creates a plot of the sample sizes based on the range of means of interest.
+```{r}
+ggplot(df, aes(x = meanA, y = n)) + geom_point(color="dodgerblue4") + 
+  theme_minimal() + xlab("Group A Mean") + ylab("n per treatment")
+```
+
+-----------------------------------------------------------------------------------------------
+
+## Non-Inferiority or Superiority
+
+Non-inferiority and superiority tests aim to prove wethre a new treatment is either not-inferior or suerior to compared to treatment, by a set margin known as a margin of non-inferiority ($-\delta$) or margin of superiority ($\delta$). In this setting, we wish to test whether the mean in group 'A', $μ_{A}$, is non-inferior/superior to the mean in group 'B', $μ_{B}$. We collect a sample from both groups, and thus will conduct a two-sample test. The idea is that statistically significant differences between the means may not be of interest unless the difference is greater than a threshold, $\delta$. This is particularly popular in clinical studies, where the margin is chosen based on clinical judgement and subject-domain knowledge. 
+
+The hypotheses to test are:
+
+\[
+  H_{0}: \mu_{A} - \mu_{B} ≤ \delta 
+\]
+\[
+  H_{1}: \mu_{A} - \mu_{B} > \delta
+\]
+
+Let's load up our necessary variables 
+```{r}
+muA = 5 # group A mean (new treatment)
+muB = 5 # group B mean
+sd = 10 # standard deviation
+delta = 5 # non-inferiority (-) or superiority (+) margin
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error 
+```
+
+We can set a range of group A means that we want to plot with their respective sample sizes. 
+```{r}
+range_meanA = seq(5, 8, 0.1) # (start, stop, step)
+```
+
+Let's create a data frame with this range of means and an empty column for sample sizes (n).
+```{r}
+df <- data.frame("meanA"=range_meanA, "n"=0)
+```
+
+This for loop calculates the sample sizes for each of the means in our selected range and adds them to our data frame. 
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each mean of group A and adds value to data frame
+for (i in range_meanA){
+  muA = i 
+  nB = ceiling((1+1/kappa)*(sd*(qnorm(1-alpha)+qnorm(1-beta))/(muA-muB-delta))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+Here's a look at our data frame:
+```{r}
+head(df)
+tail(df)
+```
+
+Finally, we can creates a plot of the sample sizes based on the range of means of interest.
+```{r}
+ggplot(df, aes(x = meanA, y = n)) + geom_point(color="dodgerblue4") + 
+  theme_minimal() + xlab("Group A Mean") + ylab("n per treatment")
+```
+
+If we change the values we can see this same result if applied to a non-inferiority trial instead of superiority.
+```{r}
+muA = 5 # group A mean (new treatment)
+muB = 5 # group B mean
+sd = 10 # standard deviation
+delta = -5 # non-inferiority (-) or superiority (+) margin
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error 
+```
+
+```{r}
+range_meanA = seq(4, 8, 0.1) # (start, stop, step)
+```
+
+```{r}
+df <- data.frame("meanA"=range_meanA, "n"=0)
+```
+
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each mean of group A and adds value to data frame
+for (i in range_meanA){
+  muA = i 
+  nB = ceiling((1+1/kappa)*(sd*(qnorm(1-alpha)+qnorm(1-beta))/(muA-muB-delta))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+```{r}
+head(df)
+tail(df)
+```
+
+```{r}
+ggplot(df, aes(x = meanA, y = n)) + geom_point(color="dodgerblue4") + 
+  theme_minimal() + xlab("Group A Mean") + ylab("n per treatment")
+```
+
+-----------------------------------------------------------------------------------------------
+
+## Equivalence 
+
+An equivalence test is useful when we wish to test whether the means of two groups are equivalent, without concern of which group's mean is larger. Suppose we collect a sample from a group 'A' and a group 'B'; that is we collect two samples, and will conduct a two-sample test. For example, we may wish to test whether a new product is equivalent to an existing, industry standard product. Here, the 'burden of proof', so to speak, falls on the new product; that is, equivalence is actually represented by the alternative, rather than the null hypothesis.
+
+The hypotheses to test are:
+
+\[
+  H_{0}: |\mu_{A} - \mu_{B}| ≥ \delta 
+\]
+\[
+  H_{1}: |\mu_{A} - \mu_{B}| < \delta
+\]
+
+Let's load up our necessary variables 
+```{r}
+muA = 5 # group A mean (new treatment)
+muB = 4 # group B mean
+sd = 10 # standard deviation
+delta = 5 # equivaence margin
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error 
+```
+
+We can set a range of group A means that we want to plot with their respective sample sizes. 
+```{r}
+range_meanA = seq(4, 7, 0.1) # (start, stop, step)
+```
+
+Let's create a data frame with this range of means and an empty column for sample sizes (n).
+```{r}
+df <- data.frame("meanA"=range_meanA, "n"=0)
+```
+
+This for loop calculates the sample sizes for each of the means in our selected range and adds them to our data frame. 
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each mean of group A and adds value to data frame
+for (i in range_meanA){
+  muA = i 
+  nB = ceiling((1+1/kappa)*(sd*(qnorm(1-alpha)+qnorm(1-beta/2))/(abs(muA-muB)-delta))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+Here's a look at our data frame:
+```{r}
+head(df)
+tail(df)
+```
+
+Finally, we can creates a plot of the sample sizes based on the range of means of interest.
+```{r}
+ggplot(df, aes(x = meanA, y = n)) + geom_point(color="dodgerblue4") + 
+  theme_minimal() + xlab("Mean Group A") + ylab("n per treatment")
+```
+
+-----------------------------------------------------------------------------------------------
+
+# Compare Two Proportions
+
+-----------------------------------------------------------------------------------------------
+
+## Equality 
+
+Equality tests aim to prove whether the proportions of two groups are different. Suppose the two groups are 'A' and 'B', and we collect a sample from both groups -- i.e. we have two samples. We perform a two-sample test to determine whether the proportion in group A ($p_{A}$), is different from the proportion in group B ($p_{B}$).
+
+The hypotheses are: 
+
+\[
+  H_{0}: p_{A} - p_{B} = 0 
+\]
+\[
+  H_{1}: p_{A} - p_{B} ≠ 0
+\]
+
+Let's load up our necessary variables 
+```{r}
+pA = 0.65 # group A proportion (new treatment)
+pB = 0.85 # group B proportion
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error 
+```
+
+We can set a range of group A proportions that we want to plot with their respective sample sizes. 
+```{r}
+range_propA = seq(0.65, 0.78, 0.01) # (start, stop, step)
+```
+
+Let's create a data frame with this range of proportions and an empty column for sample sizes (n).
+```{r}
+df <- data.frame("propA"=range_propA, "n"=0)
+```
+
+This for loop calculates the sample sizes for each of the means in our selected range and adds them to our data frame. 
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each proportion of group A and adds value to data frame
+for (i in range_propA){
+  pA = i 
+  nB = ceiling((pA*(1-pA)/kappa+pB*(1-pB))*((qnorm(1-alpha/2)+qnorm(1-beta))/(pA-pB))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+Here's a look at our data frame:
+```{r}
+head(df)
+tail(df)
+```
+
+Finally, we can creates a plot of the sample sizes based on the range of means of interest.
+```{r}
+ggplot(df, aes(x = propA, y = n)) + geom_point(color="dodgerblue4") + 
+  theme_minimal() + xlab("Proportion Group A") + ylab("n per treatment")
+```
+
+-----------------------------------------------------------------------------------------------
+
+## Non-inferiority or Superiority
+
+Non-inferiority and superiority tests aim to prove wethere a new treatment is either not-inferior or superior compared to another treatment, by a set margin known as a margin of non-inferiority ($-\delta$) or margin of superiority ($\delta$). In this setting, we wish to test whether the proportion in group 'A', $p_{A}$, is non-inferior/superior to the proportion in group 'B', $p_{B}$. We collect a sample from both groups, and thus will conduct a two-sample test. The idea is that statistically significant differences between the proportions may not be of interest unless the difference is greater than a threshold, $\delta$. This is particularly popular in clinical studies, where the margin is chosen based on clinical judgement and subject-domain knowledge. 
+
+The hypotheses to test are:
+
+\[
+  H_{0}: p_{A} - p_{B} ≤ \delta 
+\]
+\[
+  H_{1}: p_{A} - p_{B} > \delta
+\]
+
+Let's load up our necessary variables 
+```{r}
+pA = 0.85 # group A proportion (new treatment)
+pB = 0.65 # group B proportion
+delta = -0.10 # non-inferiority (-) or superiority (+) margin
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error 
+```
+
+We can set a range of group A proportions that we want to plot with their respective sample sizes. 
+```{r}
+range_propA = seq(0.65, 0.85, 0.01) # (start, stop, step)
+```
+
+Let's create a data frame with this range of means and an empty column for sample sizes (n).
+```{r}
+df <- data.frame("propA"=range_propA, "n"=0)
+```
+
+This for loop calculates the sample sizes for each of the means in our selected range and adds them to our data frame. 
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each proportion of group A and adds value to data frame
+for (i in range_propA){
+  pA = i 
+  nB = ceiling((pA*(1-pA)/kappa+pB*(1-pB))*((qnorm(1-alpha)+qnorm(1-beta))/(pA-pB-delta))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+Here's a look at our data frame:
+```{r}
+head(df)
+tail(df)
+```
+
+Finally, we can creates a plot of the sample sizes based on the range of means of interest.
+```{r}
+ggplot(df, aes(x = propA, y = n)) + geom_point(color="dodgerblue4") + 
+  theme_minimal() + xlab("Proportion Group A") + ylab("n per treatment")
+```
+
+If we change the values we can see this same result if applied to a superiority trial instead of non-inferiority.
+```{r}
+pA = 0.65 # group A proportion (new treatment)
+pB = 0.85 # group B proportion
+delta = 0.10 # non-inferiority (-) or superiority (+) margin
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error 
+```
+
+```{r}
+range_propA = seq(0.65, 0.85, 0.01) # (start, stop, step)
+```
+
+```{r}
+df <- data.frame("propA"=range_propA, "n"=0)
+```
+
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each proportion of group A and adds value to data frame
+for (i in range_propA){
+  pA = i 
+  nB = ceiling((pA*(1-pA)/kappa+pB*(1-pB))*((qnorm(1-alpha)+qnorm(1-beta))/(pA-pB-delta))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+```{r}
+head(df)
+tail(df)
+```
+
+```{r}
+ggplot(df, aes(x = propA, y = n)) + geom_point(color="dodgerblue4") + theme_minimal() +
+  xlab("Proportion Group A") + ylab("n per treatment")
+```
+
+-----------------------------------------------------------------------------------------------
+
+## Equivalence
+
+An equivalence test is useful when we wish to test whether the proportions of two groups are equivalent, without concern of which group's proportion is larger. Suppose we collect a sample from a group 'A' and a group 'B'; that is we collect two samples, and will conduct a two-sample test. For example, we may wish to test whether a new product is equivalent to an existing, industry standard product. Here, the 'burden of proof', so to speak, falls on the new product; that is, equivalence is actually represented by the alternative, rather than the null hypothesis.
+
+The hypotheses to test are:
+
+\[
+  H_{0}: |p_{A} - p_{B}| ≥ \delta 
+\]
+\[
+  H_{1}: |p_{A} - p_{B}| < \delta
+\]
+
+Let's load up our necessary variables 
+```{r}
+pA = 0.65 # group A proportion (new treatment)
+pB = 0.85 # group B proportion
+delta = 0.05 # equivalence margin
+kappa = 1 # sampling ratio
+alpha = 0.05 # type 1 error 
+beta = 0.20 # type 2 error
+```
+
+We can set a range of group A means that we want to plot with their respective sample sizes. 
+```{r}
+range_propA = seq(0.60, 0.75, 0.01) # (start, stop, step)
+```
+
+Let's create a data frame with this range of means and an empty column for sample sizes (n).
+```{r}
+df <- data.frame("propA"=range_propA, "n"=0)
+```
+
+This for loop calculates the sample sizes for each of the means in our selected range and adds them to our data frame. 
+```{r}
+# Sets counter variable to iterate through each row 
+count = 1
+# Calculates sample size for each proportion of group A and adds value to data frame
+for (i in range_propA){
+  pA = i 
+  nB = ceiling((pA*(1-pA)/kappa+pB*(1-pB))*((qnorm(1-alpha)+qnorm(1-beta/2))/(abs(pA-pB)-delta))^2)
+  df[count, 2] = nB
+  count = count + 1
+}
+```
+
+Here's a look at our data frame:
+```{r}
+head(df)
+tail(df)
+```
+
+Finally, we can creates a plot of the sample sizes based on the range of means of interest.
+```{r}
+ggplot(df, aes(x = propA, y = n)) + geom_point(color="dodgerblue4") + 
+  theme_minimal() + xlab("Proportion Group A") + ylab("n per treatment")
+```
+
+# Version Control 
+
+September 9, 2023 - Version 1.0 
+
+
+
+
